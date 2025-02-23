@@ -11,7 +11,7 @@ def generate_population(population_size, input_data_size, output_data_size):
 def evaluate_talent(population, x_train, y_train):
     talents = []
     for model in population:
-        talents.append(model.loss(x_train, y_train))
+        talents.append(model.evaluate(x_train, y_train))
     return talents
 
 def select_survivors(population, test_results, select_parameters):
@@ -20,9 +20,12 @@ def select_survivors(population, test_results, select_parameters):
     population = [x for _, x in sorted(zip(test_results, population), key=lambda pair: pair[0])]
     # Select the best models
     num_elites = int(select_parameters['elitism'] * len(population))
-    num_random = int(select_parameters['random'] * len(population))
     survivors = population[:num_elites]
-    survivors += population[-num_random:]
+    # add random models to the survivors
+    num_random = int(select_parameters['random'] * len(population))
+    for i in range(num_random):
+        survivors.append(population[np.random.randint(num_elites, len(population))])
+
     debug_print(f"Selected {len(survivors)} survivors")
     return survivors
 
@@ -55,3 +58,15 @@ def test_population(population, x_test, y_test):
     for model in population:
         test_results.append(model.evaluate(x_test, y_test))
     return test_results
+
+def talent_drop(population, talent_drop_percentile, x_train, y_train):
+    # remove from population models with the talent score in the bottom perceltile
+    talents = evaluate_talent(population, x_train, y_train)
+    #convert talents tensor to numpy array
+    talents = [talent.item() for talent in talents]
+    talent_threshold = np.percentile(talents, talent_drop_percentile)
+    new_population = []
+    for i in range(len(population)):
+        if talents[i] > talent_threshold:
+            new_population.append(population[i])
+    return new_population

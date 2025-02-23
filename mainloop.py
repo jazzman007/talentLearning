@@ -3,32 +3,34 @@ import numpy as np
 from config import *
 from population import *
 from model import Model
+import math
 
-max_generations = 100
-population_size = 40
-use_talent = False
-talent_drop = 0.1
+max_generations = 200
+population_size = 50
+use_talent = True
+talent_drop_percentile = 0.2
 
 breed_parameters = {
     'mutation': {
-        'mutation_rate': 0.2
+        'mutation_rate': 0.5
     }
 }
 select_parameters = {
-    'elitism': 0.2,
-    'random': 0.1
+    'elitism': 0.4,
+    'random': 0.
 }
 
 train_parameters = {
-    'num_epochs': 20,
+    'num_epochs': 100,
     'batch_size': 10,
-    'loss_function': torch.nn.functional.mse_loss
+    'print_every': None,
+    'learning_rate': 0.01
 }
 
 # generate sample data for quadratic regression
-x = np.random.rand(100, 1)
-y = x * x 
-
+x = 6.28*np.random.rand(100, 1)
+# make sin(x) as the target function
+y = np.sin(x)
 # define tensors
 x_train = torch.tensor(x[:80], dtype=torch.float32)
 y_train = torch.tensor(y[:80], dtype=torch.float32)
@@ -49,9 +51,11 @@ debug_print("Starting training loop")
 while (generation <= max_generations) and (not generation_converged):
 
     print(f"Generation {generation}")
+    print("Max layers: ", max([model.dna['num_layers'] for model in population]))
+    print("Max layer sizes: ", max([max(model.dna['layer_sizes']) for model in population]))
 
     if use_talent:
-        talent_drop(population, talent_drop, x, y) 
+        population = talent_drop(population, talent_drop_percentile, x_train, y_train) 
 
     train_population(population, x_train, y_train, train_parameters)
 
@@ -66,8 +70,8 @@ while (generation <= max_generations) and (not generation_converged):
 
     generation += 1
 
-    print("Best model inferences :")
-    for i in range(x_test.shape[0]):
-        print(f"x: {x_test[i]}, y_m: {best_model.forward(x_test[i])}, y_t: {y_test[i]}")
+    #print("Best model inferences :")
+    #for i in range(x_test.shape[0]):
+    #    print(f"x: {x_test[i]}, y_m: {best_model.forward(x_test[i])}, y_t: {y_test[i]}")
     print("Best model dna:", best_model_dna)
     print("Best result: ", best_result)
